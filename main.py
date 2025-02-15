@@ -13,7 +13,6 @@
 #   "python-dateutil",
 #   "docstring-parser",
 #   "httpx",
-#   "scikit-learn",
 #   "pydantic",
 # ]
 # ///
@@ -45,9 +44,9 @@ install_and_run_script
 
 
 load_dotenv()
-API_KEY = os.getenv("OPEN_AI_PROXY_TOKEN")
-URL_CHAT = os.getenv("OPEN_AI_PROXY_URL")
-URL_EMBEDDING = os.getenv("OPEN_AI_EMBEDDING_URL")
+API_KEY = os.getenv("AIPROXY_TOKEN")
+URL_CHAT = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+URL_EMBEDDING = "http://aiproxy.sanand.workers.dev/openai/v1/embeddings"
 
 app = FastAPI()
 
@@ -98,9 +97,6 @@ def parse_task_description(task_description: str,tools: list):
                             "tool_choice":"required",
                 }
                      )
-    logging.info("PRINTING RESPONSE:::"*3)
-    print(response.json())
-    logging.info("PRINTING RESPONSE:::"*3)
     return response.json()["choices"][0]["message"]
 
 
@@ -113,7 +109,6 @@ def execute_function_call(function_call):
         logging.info("PRINTING RESPONSE:::"*3)
         print('Calling function:', function_name)
         print('Arguments:', function_args)
-        logging.info("PRINTING RESPONSE:::"*3)
         if function_to_call:
             function_to_call(**function_args)
         else:
@@ -156,6 +151,4 @@ async def read_file(path: str = Query(..., description="Path to the file to read
 
 if __name__ == "__main__":
     import uvicorn
-    tools = [convert_function_to_openai_schema(count_occurrences), convert_function_to_openai_schema(query_database)] #REMOVE THIS LATER
-    print(tools)
     uvicorn.run(app, host="0.0.0.0", port=8000)
