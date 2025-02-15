@@ -30,7 +30,7 @@ import os
 import json
 from dateutil.parser import parse
 import re
-import docstring_parser
+import docstring_parser # type: ignore
 import httpx
 import inspect
 from typing import Callable, get_type_hints, Dict, Any, Tuple,Optional,List
@@ -120,15 +120,36 @@ def convert_function_to_openai_schema(func: Callable) -> dict:
     
     return openai_function_schema
  
+def get_prettier_parser(file_path: str) -> Optional[str]:
+    """Determine the Prettier parser for the given file."""
+    file_name, file_extension = os.path.splitext(file_path)
+    if file_extension in ['.js', '.jsx', '.ts', '.tsx']:
+        return 'babel'
+    elif file_extension in ['.md', '.markdown', '.mdx']:
+        return 'markdown'
+    elif file_extension in ['.json']:
+        return 'json'
+    elif file_extension in ['.html', '.htm']:
+        return 'html'
+    elif file_extension in ['.yml', '.yaml']:
+        return 'yaml'
+    else:
+        return None
+
 def format_file_with_prettier(file_path: str, prettier_version: str):
-    """
-    Format the contents of a specified file using a particular formatting tool, ensuring the file is updated in-place.
-    Args:
-        file_path: The path to the file to format.  
-        prettier_version: The version of Prettier to use.
-    """
-    input_file_path = ensure_local_path(file_path)
-    subprocess.run(["npx", f"prettier@{prettier_version}", "--write", input_file_path])
+    """Run Prettier on the given file with the appropriate parser."""
+    parser = get_prettier_parser(file_path)
+    if parser is None:
+        print(f"Unsupported file type: {file_path}")
+        return
+    try:
+        # Use npx to run a specific version of Prettier (e.g., 3.4.2)
+        result = subprocess.run(
+            ["npx", f"prettier@{prettier_version}", "--write", file_path, "--parser", parser], check=True, text=True, capture_output=True)
+        print(f"✅ File formatted successfully: {file_path}")
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        print(f"Error formatting the file: {e}")
 
 def query_gpt(user_input: str,task: str):
     response = requests.post(
@@ -182,7 +203,7 @@ def query_gpt_image(image_path: str, task: str):
                 "Content-Type": "application/json"},
         json={
             "model": "gpt-4o-mini",
-            "messages": [{'role': 'system','content':"JUST GIVE the required input, as short as possible, one word if possible. "},
+            "messages": [{'role': 'system','content':"JUST GIVE the required input, as short as possible, one word if possible\n YOUR output is part of a program, using tool functions"+task},
                 {
                 "role": "user",
                 "content": [
@@ -287,7 +308,7 @@ def get_similar_text_using_embeddings(input_file: str, output_file: str, no_of_s
     
     documents = [comment.strip() for comment in documents]
     
-    line_embeddings = get_embeddings(documents)
+    embeddings = get_embeddings(documents)
     similarity_matrix = np.dot(embeddings, embeddings.T)
     
     np.fill_diagonal(similarity_matrix, -1)  # Ignore self-similarity
