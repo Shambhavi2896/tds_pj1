@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -39,7 +36,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: shambhavi2896/tds_pj1:latest
+          tags: shambhavi2896/proj_1:latest
 
       - name: Log out of Docker Hub
         run: docker logout
