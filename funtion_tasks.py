@@ -36,7 +36,12 @@ import inspect
 from typing import Callable, get_type_hints, Dict, Any, Tuple,Optional,List
 from pydantic import create_model, BaseModel
 import re
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    Image= None
+    
 dotenv.load_dotenv()
 
 API_KEY = os.getenv("AIPROXY_TOKEN")
