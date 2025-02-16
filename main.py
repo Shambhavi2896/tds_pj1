@@ -81,11 +81,6 @@ def delete_file(file_path: str):
     raise HTTPException(
         status_code=405, detail="Deletion is not allowed.")
 
-import os, shutil
-def raise_permission_error(*_, **__):
-    raise PermissionError("File deletion is not allowed.")
-os.remove = os.unlink = shutil.rmtree = raise_permission_error
-
 function_mappings: Dict[str, Callable] = {
     "install_and_run_script": install_and_run_script, 
     "format_file_with_prettier": format_file_with_prettier,
