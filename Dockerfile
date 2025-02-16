@@ -15,8 +15,6 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN npm install -g prettier
-
 # Debug: List files in the current directory
 RUN ls -l
 
