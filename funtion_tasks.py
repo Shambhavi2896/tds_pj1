@@ -344,47 +344,33 @@ def extract_text_from_image(image_path: str, output_file: str, task: str):
         file.write(response["choices"][0]["message"]["content"].replace(" ", ""))       
 def extract_specific_content_and_create_index(input_file: str, output_file: str, extension: str, content_marker: str):
     """
-    Identify all files with a specific extension in a directory.
-    For each file, extract particular content (e.g., the first occurrence of a header)
-    and create an index file mapping filenames to their extracted content.
-    
-    Args:
-        input_file (str): The directory containing the files to index.
-        output_file (str): The path to the output file where the index will be written.
-        extension (str): The file extension to filter files.
-        content_marker (str): The content marker to extract from each file.
-    """
+    Finds all files with the given extension in the input directory, extracts the content after the content marker, and writes a single-line JSON list to the output file."""
     input_file_path = ensure_local_path(input_file)
     output_file_path = ensure_local_path(output_file)
 
-    # Create an empty dictionary to store file titles
-    file_titles = {}
+    index = {}
 
-    # Walk through the directory to find files matching the extension
-    for root, _, files in os.walk(input_file_path):
-        for file in files:
-            if file.endswith(extension):
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        # Extract the specific content marker
-                        for line in f:
-                            if line.startswith(content_marker):
-                                title = line.lstrip(content_marker).strip()
-                                file_titles[os.path.relpath(file_path, input_file_path)] = title
-                                break
-                except Exception as e:
-                    print(f"Error reading file {file_path}: {e}")
-
-    # Write the titles to the output JSON file
     try:
-        with open(output_file_path, "w", encoding="utf-8") as json_file:
-            json.dump(file_titles, json_file, ensure_ascii=False, indent=2)
-        print(f"✅ Index file created at: {output_file}")
-        return True
+        for root, _, files in os.walk(input_file_path):
+            for file in files:
+                if file.endswith(extension):
+                    file_path = os.path.join(root, file)
+                    
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            match = re.match(r"^#" + content_marker + r"\s+(.+)", line.strip())  # Match first H1
+                            if match:
+                                relative_path = os.path.relpath(file_path, input_file_path)  # Get relative path
+                                index[relative_path] = match.group(1)
+                                break  # Stop after first H1
+
+        # Write the JSON list as a single line
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            json.dump(index, f, separators=(",", ":"))  # Compact single-line format
+
+        return f"Markdown index written as a single-line JSON to {output_file}."
     except Exception as e:
-        print(f"Error while writing to index file {output_file_path}: {e}")
-        return False
+        return f"Error processing Markdown files: {str(e)}"
     
 def process_and_write_logfiles(input_file: str, output_file: str, num_logs: int = 10, num_of_lines: int = 1):
     """
