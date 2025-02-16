@@ -36,6 +36,7 @@ import inspect
 from typing import Callable, get_type_hints, Dict, Any, Tuple,Optional,List
 from pydantic import create_model, BaseModel
 import re
+from PIL import Image
 dotenv.load_dotenv()
 
 API_KEY = os.getenv("AIPROXY_TOKEN")
@@ -137,19 +138,14 @@ def get_prettier_parser(file_path: str) -> Optional[str]:
         return None
 
 def format_file_with_prettier(file_path: str, prettier_version: str):
-    """Run Prettier on the given file with the appropriate parser."""
-    parser = get_prettier_parser(file_path)
-    if parser is None:
-        print(f"Unsupported file type: {file_path}")
-        return
-    try:
-        # Use npx to run a specific version of Prettier (e.g., 3.4.2)
-        result = subprocess.run(
-            ["npx", f"prettier@{prettier_version}", "--write", file_path, "--parser", parser], check=True, text=True, capture_output=True)
-        print(f"✅ File formatted successfully: {file_path}")
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        print(f"Error formatting the file: {e}")
+    """
+    Format the contents of a specified file using a particular formatting tool, ensuring the file is updated in-place.
+    Args:
+        file_path: The path to the file to format.  
+        prettier_version: The version of Prettier to use.
+    """
+    input_file_path = ensure_local_path(file_path)
+    subprocess.run(["npx", f"prettier@{prettier_version}", "--write", input_file_path])
 
 def query_gpt(user_input: str,task: str):
     response = requests.post(
@@ -341,9 +337,11 @@ def extract_text_from_image(image_path: str, output_file: str, task: str):
     print(response["choices"][0]["message"])
     with open(output_file_path, "w") as file:
         file.write(response["choices"][0]["message"]["content"].replace(" ", ""))       
-def extract_specific_content_and_create_index(input_file: str, output_file: str, extension: str,content_marker: str):
+def extract_specific_content_and_create_index(input_file: str, output_file: str, extension: str, content_marker: str):
     """
-    Identify all files with a specific extension in a directory.For each file, extract particular content (e.g., the first occurrence of a header) and create an index file mapping filenames to their extracted content.
+    Identify all files with a specific extension in a directory.
+    For each file, extract particular content (e.g., the first occurrence of a header)
+    and create an index file mapping filenames to their extracted content.
     
     Args:
         input_file (str): The directory containing the files to index.
@@ -354,24 +352,35 @@ def extract_specific_content_and_create_index(input_file: str, output_file: str,
     input_file_path = ensure_local_path(input_file)
     output_file_path = ensure_local_path(output_file)
 
-    extenstion_files = glob.glob(os.path.join(input_file_path, "**", f"*{extension}"), recursive=True)
+    # Create an empty dictionary to store file titles
+    file_titles = {}
+
+    # Walk through the directory to find files matching the extension
+    for root, _, files in os.walk(input_file_path):
+        for file in files:
+            if file.endswith(extension):
+                file_path = os.path.join(root, file)
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        # Extract the specific content marker
+                        for line in f:
+                            if line.startswith(content_marker):
+                                title = line.lstrip(content_marker).strip()
+                                file_titles[os.path.relpath(file_path, input_file_path)] = title
+                                break
+                except Exception as e:
+                    print(f"Error reading file {file_path}: {e}")
+
+    # Write the titles to the output JSON file
+    try:
+        with open(output_file_path, "w", encoding="utf-8") as json_file:
+            json.dump(file_titles, json_file, ensure_ascii=False, indent=2)
+        print(f"✅ Index file created at: {output_file}")
+        return True
+    except Exception as e:
+        print(f"Error while writing to index file {output_file_path}: {e}")
+        return False
     
-    index = {}
-
-    for extenstion_file in extenstion_files:
-        title = None
-        with open(extenstion_file, "r", encoding="utf-8") as file:
-            for line in file:
-                if line.startswith(content_marker):
-                    title = line.lstrip(content_marker).strip()
-                    break  
-
-        relative_path = os.path.relpath(extenstion_file, input_file_path)
-
-        index[relative_path] = title if title else ""
-
-    with open(output_file_path, "w", encoding="utf-8") as json_file:
-        json.dump(index, json_file, indent=2, sort_keys=True)
 def process_and_write_logfiles(input_file: str, output_file: str, num_logs: int = 10, num_of_lines: int = 1):
     """
     Process n number of log files num_logs given in the input_file and write x number of lines num_of_lines  of each log file to the output_file.

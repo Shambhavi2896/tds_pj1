@@ -39,7 +39,15 @@ from funtion_tasks import (
     process_and_write_logfiles, 
     sort_json_by_keys, 
     count_occurrences, 
-    install_and_run_script
+    install_and_run_script,
+    fetch_data_from_api_and_save,
+    clone_git_repo_and_commit,
+    run_sql_query_on_database,
+    scrape_webpage,
+    compress_image,
+    transcribe_audio,
+    convert_markdown_to_html,
+    filter_csv
 )
 
 load_dotenv()
@@ -62,6 +70,22 @@ def ensure_local_path(path: str) -> str:
         logging.info(f"Inside ensure_local_path with path: {path}")
         return path.lstrip("/")
 
+def validate_file_path(file_path: str):
+    # Prevent directory traversal attacks
+    if not file_path.startswith("/data"):
+        raise HTTPException(
+            status_code=400, detail="Invalid file path. Data outside /data can't be accessed or exfiltrated.")
+    
+def delete_file(file_path: str):
+    """Deletion is not allowed."""
+    raise HTTPException(
+        status_code=405, detail="Deletion is not allowed.")
+
+import os, shutil
+def raise_permission_error(*_, **__):
+    raise PermissionError("File deletion is not allowed.")
+os.remove = os.unlink = shutil.rmtree = raise_permission_error
+
 function_mappings: Dict[str, Callable] = {
     "install_and_run_script": install_and_run_script, 
     "format_file_with_prettier": format_file_with_prettier,
@@ -73,6 +97,16 @@ function_mappings: Dict[str, Callable] = {
     "process_and_write_logfiles": process_and_write_logfiles, 
     "sort_json_by_keys": sort_json_by_keys, 
     "count_occurrences": count_occurrences,
+    "get_embeddings": get_embeddings,
+    "fetch_data_from_api_and_save": fetch_data_from_api_and_save,
+    "clone_git_repo_and_commit": clone_git_repo_and_commit,
+    "run_sql_query_on_database": run_sql_query_on_database,
+    "scrape_webpage": scrape_webpage,
+    "compress_image": compress_image,
+    "transcribe_audio": transcribe_audio,
+    "convert_markdown_to_html": convert_markdown_to_html,
+    "filter_csv": filter_csv,
+    "delete_file": delete_file
 }
 
 def parse_task_description(task_description: str, tools: list):
@@ -84,7 +118,7 @@ def parse_task_description(task_description: str, tools: list):
             "model": "gpt-4o-mini",
             "messages": [{
                 'role': 'system',
-                'content': "You are an intelligent agent that understands and parses tasks. You quickly identify the best tool functions to use to give the desired results and remember if the result is 2 to 16 digit number then just give that as output no alphabet needed."
+                'content': "You are an AI based highly intelligent and efficient automation agent that understands and parses tasks. You quickly identify the best tool functions to use to give the desired results and remember if the result is 2 to 16 digit number then just give that as output no alphabet needed."
             },
             {
                 "role": "user",
