@@ -1,49 +1,27 @@
-# Use the Alpine-based image with Python 3.9 and Node.js 14
-# FROM nikolaik/python-nodejs:python3.9-nodejs14-alpine
-# # Set environment variables to prevent Python from writing .pyc files and to buffer stdout and stderr
+# Dockerfile
 
-# Use Debian-based slim Python image
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# # Use Python 3.11 as the base image
-# FROM python:3.11-slim
-
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-RUN pip install --upgrade pip setuptools wheel
+# Copy requirements file and install dependencies
+COPY requirements.txt ./
 
-# Install system dependencies required for libraries
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    make \
-    libffi-dev \
-    musl-dev \
-    libopenblas-dev \
-    sqlite3 \
-    libsqlite3-dev \
-    libmagic-dev \
-    tesseract-ocr \
-    curl \
-    git \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
+# Upgrade pip, setuptools, and wheel to the latest version
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install Prettier globally
-RUN npm install -g prettier
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the FastAPI application code into the container
-COPY app /app
+# Debug: List files in the current directory
+RUN ls -l
 
-# Install uv
-RUN pip install uv
+# Copy the rest of the application
+COPY main.py funtion_tasks.py ./
 
-# Expose the port that the app runs on
+# Expose the FastAPI port
 EXPOSE 8000
 
 # Command to run the application
