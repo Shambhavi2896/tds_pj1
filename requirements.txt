@@ -21,6 +21,7 @@ uvicorn==0.17.6  # More compatible version
 pytesseract==0.3.13
 Pillow==9.1.0  # More compatible version
 opencv-python==4.5.4.58  # More compatible version
+node==18.7.0
 
 # UV package
 uv==0.5.29
